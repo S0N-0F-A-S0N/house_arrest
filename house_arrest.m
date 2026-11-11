@@ -39,10 +39,10 @@ void log_error(const char *title, const char *description) {
 }
 
 void send_error(lockdown_t lockdown_connection, CFStringRef error_name) {
-    CFMutableDictionaryRef response;
-    response = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    const void *keys[] = { CFSTR("Error") };
+    const void *values[] = { error_name };
+    CFDictionaryRef response = CFDictionaryCreate(kCFAllocatorDefault, keys, values, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     if (response) {
-        CFDictionarySetValue(response, CFSTR("Error"), error_name);
         if (lockdown_send_message(lockdown_connection, response, 100))
             log_error("send_error", "Could not send error response to host.");
         CFRelease(response);
@@ -85,11 +85,12 @@ void handle_vending(lockdown_t lockdown_connection, CFDictionaryRef message, int
                     struct stat container_stat;
                     if (stat([dataContainerPath UTF8String], &container_stat) == 0) {
                         if (S_ISDIR(container_stat.st_mode)) {
-                            CFMutableDictionaryRef response;
-                            response = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+                            const void *keys[] = { CFSTR("Status") };
+                            const void *values[] = { CFSTR("Complete") };
+                            CFDictionaryRef response = CFDictionaryCreate(kCFAllocatorDefault, keys, values, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
                             if (response) {
-                                CFDictionarySetValue(response, CFSTR("Status"), CFSTR("Complete"));
                                 if (lockdown_send_message(lockdown_connection, response, 100) == 0) {
+                                    CFRelease(response);
                                     int lockdown_socket = lockdown_get_socket(lockdown_connection);
                                     void *lockdown_secure_context = lockdown_get_securecontext(lockdown_connection);
                                     
@@ -147,6 +148,7 @@ void handle_vending(lockdown_t lockdown_connection, CFDictionaryRef message, int
                                     AFCConnectionClose(connection);
                                 } else {
                                     log_error("send_status", "Could not send response to host.");
+                                    CFRelease(response);
                                 }
                             } else {
                                 log_error("send_status", "Could not create response dictionary.");
